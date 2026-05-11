@@ -1,5 +1,4 @@
 # lime
-Lime
 Lime is a security-focused wrapper over AUR helpers (paru, yay) that analyzes PKGBUILDs before installation and assigns a risk level.
 
 It is designed to prevent unsafe package execution and highlight potentially dangerous build scripts.
