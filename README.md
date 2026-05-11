@@ -40,8 +40,11 @@ lime audit neovim
 ```
 ## Risk Levels
 LOW - Safe
+
 MEDIUM - Suspicious behavior detected
+
 HIGH - Dangerous operations detected
+
 KETER - Highly destructive / system-critical risk
 
 ## How it works
