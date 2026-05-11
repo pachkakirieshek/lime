@@ -51,11 +51,13 @@ KETER - Highly destructive / system-critical risk
 
 Lime analyzes PKGBUILDs using:
 
+```
 Pattern-based security heuristics
 Lightweight AST extraction
 Dependency graph inspection
 Plugin-based rule system
 Diff-based update attack detection
+```
 
 Then it decides whether installation should be allowed or confirmed manually.
 
