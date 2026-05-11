@@ -19,30 +19,33 @@ Features
 
 ---
 
-Installation (AUR)
+## Installation (AUR)
+```
 yay -S lime
-
+```
 or
-
+```
 paru -S lime
-
-Install package (safe wrapper over AUR)
+```
+## Install package (safe wrapper over AUR)
+```
 lime neovim
-
+```
 or
-
+```
 lime -S neovim
-
-Audit package only (no install)
+```
+## Audit package only (no install)
+```
 lime audit neovim
+```
+## Risk Levels
+LOW - Safe
+MEDIUM - Suspicious behavior detected
+HIGH - Dangerous operations detected
+KETER - Highly destructive / system-critical risk
 
- Risk Levels
-Level    Meaning
-LOW    Safe
-MEDIUM    Suspicious behavior detected
-HIGH    Dangerous operations detected
-KETER    Highly destructive / system-critical risk
- How it works
+## How it works
 
 Lime analyzes PKGBUILDs using:
 
@@ -54,7 +57,8 @@ Diff-based update attack detection
 
 Then it decides whether installation should be allowed or confirmed manually.
 
- Example output
+ ## Example output
+```
 {
   "pkg": "neovim",
   "risk": 60,
@@ -62,8 +66,9 @@ Then it decides whether installation should be allowed or confirmed manually.
   "reasons": ["curl usage", "sudo usage"],
   "diff": []
 }
+```
 Architecture
-lime
+```lime
  ├── analyzer (risk engine)
  ├── ast_parser (structure analysis)
  ├── graph (dependency analysis)
@@ -71,8 +76,8 @@ lime
  ├── diff (update attack detection)
  ├── sandbox (execution isolation)
  └── cli (user interface)
-
-Disclaimer
-Lime does NOT guarantee full security.
+```
+# Disclaimer
+## Lime does NOT guarantee full security.
 
 It is a heuristic-based tool and should be used as an additional safety layer, not a replacement for system trust verification.
