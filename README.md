@@ -5,7 +5,7 @@ It is designed to prevent unsafe package execution and highlight potentially dan
 
 ---
 
-Features
+## Features
 
     PKGBUILD analysis (heuristic + AST-like parsing)
     Risk scoring system (LOW / MEDIUM / HIGH / KETER)
