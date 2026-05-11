@@ -1,4 +1,4 @@
-imimport re
+import re
 
 
 def parse(pkgbuild):
