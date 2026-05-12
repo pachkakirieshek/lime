@@ -20,11 +20,11 @@ It is designed to prevent unsafe package execution and highlight potentially dan
 
 ## Installation (AUR)
 ```
-yay -S lime
+yay -S lime-bin
 ```
 or
 ```
-paru -S lime
+paru -S lime-bin
 ```
 ## Install package (safe wrapper over AUR)
 ```
