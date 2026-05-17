@@ -1,28 +1,33 @@
 """
-Ядро lime — install, audit, list, update.
+Lime core — install, audit, list, update, check.
 
-TOCTOU fix: после анализа PKGBUILD сохраняем его хэш.
-Перед передачей в paru/yay проверяем что AUR не изменился.
+TOCTOU: uses toctou.install_from_verified() — makepkg reads
+our saved PKGBUILD directly without downloading the file again. 
+So yeah, you Reddit nitpickers can finally stop whining.
 """
 
-import os
 import shutil
 import hashlib
-import tempfile
 
 import requests
 from urllib.parse import quote
 
-from .fetcher  import fetch_pkgbuild, search_similar
-from .analyzer import analyze, WHITELIST
-from .diff     import get_diff
-from .sandbox  import sandbox
-from .output   import (format_report, format_list, format_suggestions,
-                        format_whitelist_skip, format_toctou_warning)
-from .tui      import confirm
-from .cache    import save, load, save_meta, list_all, pkgbuild_hash
-from .aur_meta import check_aur_reputation, check_official_repo_conflict
-from .locale   import t
+from .fetcher          import fetch_pkgbuild, search_similar
+from .analyzer         import analyze_full, WHITELIST
+from .diff             import get_diff
+from .toctou           import install_from_verified, pkgbuild_changed_since_analysis
+from .sandbox          import sandbox
+from .output           import (format_report_full, format_list,
+                                format_suggestions, format_whitelist_skip,
+                                format_toctou_warning)
+from .tui              import confirm
+from .cache            import save, load, save_meta, list_all, pkgbuild_hash
+from .aur_meta         import check_aur_reputation, check_official_repo_conflict
+from .locale           import t
+from .srcinfo          import fetch as fetch_srcinfo, audit as audit_srcinfo
+from .arch_integration import (run_namcap, namcap_findings,
+                                check_in_official_repos,
+                                verify_installed_package)
 
 HELPERS = ["paru", "yay"]
 
@@ -34,35 +39,38 @@ def detect_helper() -> str | None:
     return None
 
 
-def _fetch_current_hash(pkg: str) -> str | None:
-    """Скачивает текущий PKGBUILD из AUR и возвращает его хэш (без кэширования)."""
-    safe = quote(pkg, safe="")
+def _collect_extra_findings(pkg: str, pkgbuild: str) -> list[tuple[str, int, str]]:
+    """namcap + .SRCINFO + pacman -Ss."""
+    extra: list[tuple[str, int, str]] = []
+
+    srcinfo = fetch_srcinfo(pkg)
+    if srcinfo is not None:
+        extra.extend(audit_srcinfo(srcinfo))
+
+    import tempfile, os
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".PKGBUILD", delete=False, encoding="utf-8",
+    ) as tmp:
+        tmp.write(pkgbuild)
+        tmppath = tmp.name
     try:
-        r = requests.get(
-            f"https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h={safe}",
-            timeout=8,
-        )
-        if r.status_code == 200 and r.text.strip():
-            return hashlib.sha256(r.text.encode()).hexdigest()
-    except Exception:
-        pass
-    return None
+        warnings = run_namcap(tmppath)
+        if warnings:
+            extra.extend(namcap_findings(warnings))
+    finally:
+        try:
+            os.unlink(tmppath)
+        except OSError:
+            pass
 
+    official = check_in_official_repos(pkg)
+    if official:
+        extra.append(official)
 
-def _toctou_check(pkg: str) -> bool:
-    """
-    Проверяет что PKGBUILD в AUR не изменился с момента анализа.
-    Возвращает True если всё ок, False если обнаружено изменение.
-    """
-    cached_hash   = pkgbuild_hash(pkg)
-    current_hash  = _fetch_current_hash(pkg)
-    if cached_hash is None or current_hash is None:
-        return True  # нет данных — пропускаем проверку
-    return cached_hash == current_hash
+    return extra
 
 
 def install(pkg: str, verbose: bool = False) -> None:
-    # Белый список
     if pkg.lower() in WHITELIST:
         print(format_whitelist_skip(pkg))
         helper = detect_helper()
@@ -73,100 +81,101 @@ def install(pkg: str, verbose: bool = False) -> None:
         return
 
     pkgbuild = fetch_pkgbuild(pkg)
-
     if pkgbuild is None:
-        suggestions = search_similar(pkg)
-        print(format_suggestions(pkg, suggestions))
+        print(format_suggestions(pkg, search_similar(pkg)))
         return
 
-    # AUR reputation (параллельно с анализом не делаем — просто вызываем)
     aur_findings = check_aur_reputation(pkg)
-
-    # Тайпосквот-проверка
     conflict = check_official_repo_conflict(pkg)
     if conflict:
         aur_findings.append(conflict)
+    aur_findings.extend(_collect_extra_findings(pkg, pkgbuild))
 
-    level, risk, reasons, explanations = analyze(
-        pkgbuild, pkg_name=pkg, aur_findings=aur_findings
-    )
-    diff = get_diff(pkg, pkgbuild)
+    result = analyze_full(pkgbuild, pkg_name=pkg, aur_findings=aur_findings)
+    diff   = get_diff(pkg, pkgbuild)
 
-    # Сохраняем кэш и мета ДО установки
     save(pkg, pkgbuild)
-    save_meta(pkg, level, risk)
+    save_meta(pkg, result.level, result.risk)
 
-    print(format_report(pkg, level, risk, reasons, explanations, diff, verbose=verbose))
+    print(format_report_full(result, diff, verbose=verbose))
 
-    if level in ("High", "Keter"):
-        if not confirm(level, reasons):
+    if result.level in ("High", "Keter"):
+        if not confirm(result.level, result.reasons):
             print(t("abort"))
             return
 
-    helper = detect_helper()
-    if not helper:
-        print(t("no_backend"))
-        return
-
-    # ── TOCTOU ЗАЩИТА ───────────────────────────────────────────────────
-    # Проверяем что за время нашего анализа AUR не подменил PKGBUILD
-    if not _toctou_check(pkg):
-        print(format_toctou_warning(pkg))
-        return
-
-    sandbox([helper, "-S", pkg])
+    # Настоящий TOCTOU fix: собираем из нашего сохранённого файла
+    # makepkg читает /tmp/lime-verified/<pkg>/PKGBUILD, а не скачивает из AUR
+    success, msg = install_from_verified(pkg, pkgbuild)
+    if not success:
+        # Fallback на paru/yay с предупреждением об ограничениях
+        print(f"\n  [lime] makepkg не сработал: {msg}")
+        print("  [lime] Fallback: устанавливаем через paru/yay.")
+        print("  [lime] ПРЕДУПРЕЖДЕНИЕ: paru/yay скачает PKGBUILD самостоятельно.")
+        print("  [lime] Если это критично — установи base-devel и используй makepkg.\n")
+        helper = detect_helper()
+        if helper:
+            sandbox([helper, "-S", pkg])
+        else:
+            print(t("no_backend"))
+    else:
+        print(f"\n  ✓  {msg}\n")
 
 
 def audit(pkg: str, verbose: bool = False) -> None:
     pkgbuild = fetch_pkgbuild(pkg)
-
     if pkgbuild is None:
-        suggestions = search_similar(pkg)
-        print(format_suggestions(pkg, suggestions))
+        print(format_suggestions(pkg, search_similar(pkg)))
         return
 
     aur_findings = check_aur_reputation(pkg)
     conflict = check_official_repo_conflict(pkg)
     if conflict:
         aur_findings.append(conflict)
+    aur_findings.extend(_collect_extra_findings(pkg, pkgbuild))
 
-    level, risk, reasons, explanations = analyze(
-        pkgbuild, pkg_name=pkg, aur_findings=aur_findings
-    )
-    diff = get_diff(pkg, pkgbuild)
+    result = analyze_full(pkgbuild, pkg_name=pkg, aur_findings=aur_findings)
+    diff   = get_diff(pkg, pkgbuild)
 
     save(pkg, pkgbuild)
-    save_meta(pkg, level, risk)
+    save_meta(pkg, result.level, result.risk)
 
-    print(format_report(pkg, level, risk, reasons, explanations, diff, verbose=verbose))
+    print(format_report_full(result, diff, verbose=verbose))
+
+
+def verify(pkg: str) -> None:
+    """lime verify — целостность установленного пакета через pacman -Qk."""
+    print(f"\n  Проверяю целостность «{pkg}»…\n")
+    findings = verify_installed_package(pkg)
+    if not findings:
+        print(f"  ✓  Пакет «{pkg}» не изменён.\n")
+        return
+    for reason, score, explanation in findings:
+        print(f"  ⚠  {reason}")
+        print(f"     {explanation}\n")
 
 
 def list_cached() -> None:
-    """lime list — показать все кэшированные пакеты."""
-    entries = list_all()
-    print(format_list(entries))
+    print(format_list(list_all()))
 
 
 def update_check() -> None:
-    """lime update — проверить все кэшированные пакеты на изменения."""
     entries = list_all()
     if not entries:
         print("\n  Кэш пуст.\n")
         return
-
-    print(f"\n  Проверяю {len(entries)} пакетов...\n")
+    print(f"\n  Проверяю {len(entries)} пакетов…\n")
     changed = []
     for entry in entries:
         pkg = entry.get("pkg", "")
         if not pkg:
             continue
-        current_hash = _fetch_current_hash(pkg)
-        cached       = pkgbuild_hash(pkg)
-        if current_hash and cached and current_hash != cached:
+        current_pb = fetch_pkgbuild(pkg)
+        if current_pb and pkgbuild_changed_since_analysis(pkg, current_pb):
             changed.append(pkg)
             print(f"  ⚠  {pkg} — PKGBUILD изменился!")
-
     if not changed:
         print("  ✓  Все пакеты актуальны.\n")
     else:
-        print(f"\n  Изменилось {len(changed)} пакетов. Запусти 'lime audit <пакет>' для проверки.\n")
+        print(f"\n  Изменилось {len(changed)} пакетов. "
+              "Запусти 'lime audit <пакет>' для проверки.\n")
