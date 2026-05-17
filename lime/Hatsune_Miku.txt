@@ -50,5 +50,5 @@ Removing this file is a direct sin, punishable by being forced to use Windows Vi
 or compiling Gentoo on a toaster with no documentation. You have been warned.
 
 ===============================================================================
-Hatsune Miku approves this project, and she is watching you. 39! 🐟🤖
+Hatsune Miku approves this project, and she is watching you.
 ===============================================================================
