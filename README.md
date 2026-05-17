@@ -423,7 +423,7 @@ Clicking 'Next -> Next -> I Agree' on a 100-page corporate Terms of Service and 
 
 Blindsidedly hitting 'Enter' when your AUR helper asks if you want to inspect a sketchy PKGBUILD, completely trusting a random maintainer named xX_LinuxLover_Xx? 'Well, the community probably checked it (maybe)...'
 
-A guy uses an AI assistant as an advanced IDE tool to build a helper script that actually tries to automate and fix this blind trust issue? 'HE'S A WITCH! BURN HIM AT THE STAKE! HE'S USING COPIED CODE!'
+A guy uses an AI assistant for code? 'HE'S A WITCH! BURN HIM AT THE STAKE! HE'S USING COPIED CODE!'
 
 If you are so pure and terrified of automation, why stop at AI? Uninstall your modern IDEs. Disable syntax highlighting, code completion, and linters. Go back to writing your code in raw ed or on paper punch cards. Why use Google to find an answer in 3 seconds when you could travel to a library and read an encyclopedia?
 
