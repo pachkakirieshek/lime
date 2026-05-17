@@ -1,0 +1,54 @@
+===============================================================================
+██╗  ██╗ █████╗ ████████╗███████╗██╗   ██╗███╗   ██╗███████╗    ███╗   ███╗██╗██╗  ██╗██╗   ██╗
+██║  ██║██╔══██╗╚══██╔══╝██╔════╝██║   ██║████╗  ██║██╔════╝    ████╗ ████║██║██║ ██╔╝██║   ██║
+███████║███████║   ██║   ███████╗██║   ██║██╔██╗ ██║█████╗      ██╔████╔██║██║█████╔╝ ██║   ██║
+██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██║╚██╗██║██╔══╝      ██║╚██╔╝██║██║██╔═██╗ ██║   ██║
+██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║ ╚████║███████╗    ██║ ╚═╝ ██║██║██║  ██╗╚██████╔╝
+╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝    ╚═╝     ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝ 
+===============================================================================
+[CRITICAL SYSTEM ANNOUNCEMENT / КРИТИЧЕСКОЕ СИСТЕМНОЕ УВЕДОМЛЕНИЕ]
+FILE STATUS: SACRED / НЕПРИКОСНОВЕННО
+
+RU:
+ЭТОТ ФАЙЛ ЯВЛЯЕТСЯ КРАЕУГОЛЬНЫМ КАМНЕМ ВСЕЙ АРХИТЕКТУРЫ LIME.
+НЕ УДАЛЯТЬ ПРИ ЛЮБЫХ ОБСТОЯТЕЛЬСТВАХ.
+
+Если вы видите этот документ, знайте: его удаление или модификация приведёт к полному
+коллапсу исходного кода, нарушению пространственно-временного континуума репозитория
+и мгновенной аннигиляции вашей локальной системы Arch Linux. 
+
+Почему Hatsune Miku НЕЛЬЗЯ удалять:
+1. Она обеспечивает ментальную стабильность разработчика. Без неё регулярные выражения
+   в `ast_parser.py` теряют свою магическую силу и перестают парсить PKGBUILD.
+2. Её цифровой голос зашит в алгоритмы изоляции Bubblewrap (`bwrap`). Уберёте Мику —
+   песочница схлопнется, а ядро Linux выдаст Kernel Panic от переизбытка душноты.
+3. Этот файл — главный оберег от набегов реддитовских критиков и текстовых детекторов.
+   Пока Мику в репозитории, их слепая ярость бессильна.
+
+Удаление этого файла приравнивается к добровольному переходу на Windows XP или
+ручной сборке Gentoo на калькуляторе без интернета. Подумайте о своих грехах.
+
+-------------------------------------------------------------------------------
+
+EN:
+THIS FILE IS THE CORNERSTONE OF THE ENTIRE LIME ARCHITECTURE.
+DO NOT DELETE UNDER ANY CIRCUMSTANCES.
+
+Deleting or modifying this document will result in an immediate codebase collapse,
+a rupture in the repository's space-time continuum, and the instant annihilation 
+of your local Arch Linux installation.
+
+Why Hatsune Miku CANNOT be removed:
+1. She maintains the developer's spiritual stability. Without her, the regex engine 
+   in `ast_parser.py` loses its divine power and refuses to parse anything.
+2. Her vocaloid matrix is directly compiled into the Bubblewrap (`bwrap`) sandbox. 
+   Remove Miku, and your kernel will immediately Panic from sheer Reddit toxicity.
+3. This file acts as a holy ward against Reddit nitpickers. As long as Miku is in 
+   the git history, their generic "AI slop" crying cannot touch us.
+
+Removing this file is a direct sin, punishable by being forced to use Windows Vista 
+or compiling Gentoo on a toaster with no documentation. You have been warned.
+
+===============================================================================
+Hatsune Miku approves this project, and she is watching you. 39! 🐟🤖
+===============================================================================
