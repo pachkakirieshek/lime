@@ -59,15 +59,15 @@ Strictly blocks execution; requires explicit bypass.
 
 ## 🛠️ Project Architecture Plaintext
 📂 lime/
- ├── core.py         # Main entrypoint (install, audit, list, update commands + TOCTOU validation)
- ├── analyzer.py     # Static heuristic and risk scoring engine
- ├── plugins.py      # Decoupled class-based security rules (SSH, Cron, Base64 detection)
- ├── homoglyph.py    # String sanitization mapping and Unicode defense
- ├── graph.py        # Complete dependency tree extraction and validation
- ├── diff.py         # Incremental shift and update mutation analysis
- ├── sandbox.py      # Subprocess handling with execution timeouts
- ├── locale.py       # Localization system (RU / EN toggle via LIME_LANG)
- └── output.py       # Beautiful, dependency-free ANSI colored terminal UI output
+core.py         # Main entrypoint (install, audit, list, update commands + TOCTOU validation)
+analyzer.py     # Static heuristic and risk scoring engine
+plugins.py      # Decoupled class-based security rules (SSH, Cron, Base64 detection)
+homoglyph.py    # String sanitization mapping and Unicode defense
+graph.py        # Complete dependency tree extraction and validation
+diff.py         # Incremental shift and update mutation analysis
+sandbox.py      # Subprocess handling with execution timeouts
+locale.py       # Localization system (RU / EN toggle via LIME_LANG)
+output.py       # Beautiful, dependency-free ANSI colored terminal UI output
  
 ## 🌐 Localization
 
