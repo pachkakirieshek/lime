@@ -43,7 +43,9 @@ If you want to quickly inspect a package structure and risk score without trigge
 List cached profiles
 View all audited and cached packages with their respective risk levels list
 Check cached packages for updates Verify if any of your previously analyzed packages have changed in the AUR remote repository update
-📊 Risk Scoring & Shifting PoliciesLime scores triggers dynamically and aggregates them into four discrete danger TierDescriptionSystem Policy
+📊 Risk Scoring & Shifting PoliciesLime scores triggers dynamically and aggregates them into four discrete danger.
+
+Tier Description System Policy
 
 🟢 LOW: Clean package. Standard build routines detected.Continues to installation automatically.
 
