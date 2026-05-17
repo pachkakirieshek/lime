@@ -401,7 +401,7 @@ Lime does NOT guarantee absolute safety against 0-day obfuscation vectors. It se
 
 
 
-For Redditors
+## For Redditors
 
 Congratulations, you found the hidden boss room. Since some of you spent your weekend conducting a literal linguistic PhD analysis on my em-dashes and emojis, here is your official breakdown:
 
