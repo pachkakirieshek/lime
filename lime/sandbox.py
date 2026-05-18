@@ -19,6 +19,14 @@ For real isolation, look at `arch_integration.build_bwrap_command()`.
 import subprocess
 
 
+def _make_failed_process(cmd: list[str], code: int = 1) -> subprocess.CompletedProcess:
+    """
+    Создаёт заглушку CompletedProcess для бесшовной обработки ошибок.
+    Позволяет вызывающему коду просто проверять result.returncode.
+    """
+    return subprocess.CompletedProcess(args=cmd, returncode=code)
+
+
 def sandbox(
     cmd: list[str],
     timeout: int = 300,
@@ -26,28 +34,39 @@ def sandbox(
     use_bwrap: bool = False,
 ) -> subprocess.CompletedProcess:
     """
-    Запускает команду установки через paru/yay.
+    Запускает команду установки в подпроцессе.
+
+    При критических сбоях (таймаут, отсутствие бинарника) перехватывает исключения 
+    и возвращает CompletedProcess с соответствующим Unix-кодом ошибки,
+    предотвращая падение основного приложения.
 
     Args:
-        cmd:       команда и аргументы, например ['paru', '-S', 'pkg']
-        timeout:   максимальное время ожидания в секундах (по умолчанию 5 мин)
-        use_bwrap: если True и bwrap доступен - оборачивает в bubblewrap.
-                   Изолирует файловую систему и PID, но НЕ сеть
-                   (paru/yay нужна сеть для скачивания).
-
-      """
+        cmd:       Команда и аргументы (например, ['paru', '-S', 'pkg'])
+        timeout:   Максимальное время выполнения в секундах (по умолчанию 5 мин)
+        use_bwrap: Если True и bwrap доступен — изолирует процесс через bubblewrap
+    """
     actual_cmd = cmd
 
     if use_bwrap:
-        from .arch_integration import build_bwrap_command, is_bwrap_available
-        if is_bwrap_available():
-            actual_cmd = build_bwrap_command(cmd)
+        try:
+            from .arch_integration import build_bwrap_command, is_bwrap_available
+            if is_bwrap_available():
+                actual_cmd = build_bwrap_command(cmd)
+        except ImportError:
+            pass
 
     try:
         return subprocess.run(actual_cmd, timeout=timeout)
+        
     except subprocess.TimeoutExpired:
-        print(f"[lime] Превышено время ожидания ({timeout}с). Процесс завершён.")
-        raise
+        print(f"\n  [lime] Превышено время ожидания ({timeout}с). Процесс прерван.")
+        return _make_failed_process(actual_cmd, code=124)  # 124: Стандартный код таймаута
+        
     except FileNotFoundError:
-        print(f"[lime] Команда не найдена: {actual_cmd[0]!r}")
-        raise
+        print(f"\n  [lime] Команда не найдена: {actual_cmd[0]!r}")
+        print("  [lime] Убедитесь, что необходимый пакет (paru/yay/bwrap) установлен.")
+        return _make_failed_process(actual_cmd, code=127)  # 127: Команда не найдена
+        
+    except Exception as e:
+        print(f"\n  [lime] Неожиданная ошибка подпроцесса: {e}")
+        return _make_failed_process(actual_cmd, code=1)    # 1: Общая ошибка
