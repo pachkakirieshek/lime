@@ -6,8 +6,9 @@ our saved PKGBUILD directly without downloading the file again.
 So yeah, you Reddit nitpickers can finally stop whining.
 """
 
+import os
 import shutil
-import hashlib
+import tempfile
 
 import requests
 from urllib.parse import quote
@@ -21,13 +22,14 @@ from .output           import (format_report_full, format_list,
                                 format_suggestions, format_whitelist_skip,
                                 format_toctou_warning)
 from .tui              import confirm
-from .cache            import save, load, save_meta, list_all, pkgbuild_hash
+from .cache            import save, save_meta, list_all, pkgbuild_hash
 from .aur_meta         import check_aur_reputation, check_official_repo_conflict
 from .locale           import t
 from .srcinfo          import fetch as fetch_srcinfo, audit as audit_srcinfo
 from .arch_integration import (run_namcap, namcap_findings,
                                 check_in_official_repos,
-                                verify_installed_package)
+                                verify_installed_package,
+                                is_bwrap_available)
 
 HELPERS = ["paru", "yay"]
 
@@ -47,12 +49,14 @@ def _collect_extra_findings(pkg: str, pkgbuild: str) -> list[tuple[str, int, str
     if srcinfo is not None:
         extra.extend(audit_srcinfo(srcinfo))
 
-    import tempfile, os
+    # Исправлен баг: импорты вынесены наверх, временный файл закрывается
+    # корректно через delete=False + явный unlink в finally
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".PKGBUILD", delete=False, encoding="utf-8",
     ) as tmp:
         tmp.write(pkgbuild)
         tmppath = tmp.name
+    # Файл уже закрыт после выхода из with — теперь namcap может его читать
     try:
         warnings = run_namcap(tmppath)
         if warnings:
@@ -75,7 +79,8 @@ def install(pkg: str, verbose: bool = False) -> None:
         print(format_whitelist_skip(pkg))
         helper = detect_helper()
         if helper:
-            sandbox([helper, "-S", pkg])
+            use_bwrap = is_bwrap_available()
+            sandbox([helper, "-S", pkg], use_bwrap=use_bwrap)
         else:
             print(t("no_backend"))
         return
@@ -94,28 +99,38 @@ def install(pkg: str, verbose: bool = False) -> None:
     result = analyze_full(pkgbuild, pkg_name=pkg, aur_findings=aur_findings)
     diff   = get_diff(pkg, pkgbuild)
 
-    save(pkg, pkgbuild)
-    save_meta(pkg, result.level, result.risk)
-
     print(format_report_full(result, diff, verbose=verbose))
 
+    # Исправлен баг: save/save_meta вызываются ПОСЛЕ подтверждения пользователя.
+    # Раньше кэш сохранялся до confirm() — пользователь отменял установку,
+    # а пакет уже был помечен как "проверенный".
     if result.level in ("High", "Keter"):
         if not confirm(result.level, result.reasons):
             print(t("abort"))
             return
 
-    # Настоящий TOCTOU fix: собираем из нашего сохранённого файла
-    # makepkg читает /tmp/lime-verified/<pkg>/PKGBUILD, а не скачивает из AUR
+    # Сохраняем только если пользователь не отменил
+    save(pkg, pkgbuild)
+    save_meta(pkg, result.level, result.risk)
+
+    # Настоящий TOCTOU fix: makepkg читает наш сохранённый файл
+    # Проверяем что не запущены под root (makepkg откажет)
+    if os.getuid() == 0:
+        print("\n  [lime] ОШИБКА: lime запущен от root.")
+        print("  [lime] makepkg не работает от root — это намеренное ограничение Arch.")
+        print("  [lime] Запустите lime от обычного пользователя.\n")
+        return
+
     success, msg = install_from_verified(pkg, pkgbuild)
     if not success:
-        # Fallback на paru/yay с предупреждением об ограничениях
         print(f"\n  [lime] makepkg не сработал: {msg}")
         print("  [lime] Fallback: устанавливаем через paru/yay.")
         print("  [lime] ПРЕДУПРЕЖДЕНИЕ: paru/yay скачает PKGBUILD самостоятельно.")
         print("  [lime] Если это критично — установи base-devel и используй makepkg.\n")
         helper = detect_helper()
         if helper:
-            sandbox([helper, "-S", pkg])
+            use_bwrap = is_bwrap_available()
+            sandbox([helper, "-S", pkg], use_bwrap=use_bwrap)
         else:
             print(t("no_backend"))
     else:
@@ -170,7 +185,13 @@ def update_check() -> None:
         pkg = entry.get("pkg", "")
         if not pkg:
             continue
-        current_pb = fetch_pkgbuild(pkg)
+        # Исправлен баг: перехватываем сетевые ошибки — если AUR недоступен,
+        # один пакет не должен ронять весь lime update
+        try:
+            current_pb = fetch_pkgbuild(pkg)
+        except Exception:
+            print(f"  ?  {pkg} — не удалось проверить (сеть недоступна?)")
+            continue
         if current_pb and pkgbuild_changed_since_analysis(pkg, current_pb):
             changed.append(pkg)
             print(f"  ⚠  {pkg} — PKGBUILD изменился!")
